@@ -7,7 +7,8 @@ import datetime
 Agent Super-Class:
 
 Provides a foundation for other agent classes
-    - meant to 
+    - primary purpose is to maximise the cumulative reward per episode
+    - utilizes neural networks to develop its policy
 
 Requires implementation of get_action(), update_batch(), create_summaries(), and write_summaries()
 """
@@ -17,15 +18,18 @@ class agent:
 
 
     def __init__(self,directory=None):
-        
+        """
+        only creating a directory
+        subclasses construct their neural networks in __init__()
+        """
+
+        # create a directory, using the current time is an easy way to create a unique directory
         now = datetime.datetime.now()
         date = str(now.month)+"-"+str(now.day)+"-"+str(now.year)+"_"+str(now.hour)+"-"+str(now.minute)+"-"+str(now.second)
-        
         if directory==None:
             self.directory = "/tmp/astroplan/"+date
         else:
             self.directory = directory
-
         print("\nNew agent's personal directory: "+self.directory)
 
     def reset(self):
@@ -70,11 +74,6 @@ class agent:
 
 
 
-
-
-
-
-
 """
 Actor-Critic Agent
 
@@ -86,12 +85,15 @@ Consists of a 2-part graph:
     will generate a perceieved value of the state-action pair, goal is to accurately predict values
     
 Losses:
-    includes a policy-gradient loss that can be thought of as the network's confidence
+    includes a policy-gradient loss that is used to calculate the gradient for the action
     also includes a value loss that is the difference between the predicted value and the actual value (the discounted reward)
 
 Also writes the losses, average reward, weights, and biases to tensorboard
 
 Agent is initialized with adjustable hyper-parameters for the network
+
+Primarily based on code from this link:
+    https://colab.research.google.com/drive/1d_1WzH8DWLkdWO3UHv-k8RxWtd8JgXNy#scrollTo=1rJoZ0WvyZZ4 
 
 """
 
@@ -108,17 +110,16 @@ class actor_critic_agent(agent):
                  pg_scalar = 1,                 # magnitude of policy gradient loss
                  value_scalar = 1,              # magnitude of value loss
                  learning_rate = 1e-2,          # learning rate for optimizer
-                 optimizer = "Adam",            # type of optimizer
                  directory = None):             # directory name for tensorboard
 
         """
-        creates an agent with a network and training procedure
+        creates an agent with a neural network and training procedure
         """
 
         super().__init__(directory = directory)
 
-        super().reset()
-        
+        super().reset() # reset our tensorflow session
+
         kernel_init_dict = {"variance_scaling": tf.initializers.variance_scaling,
                             "random_normal": tf.initializers.random_normal,
                             "random_uniform": tf.initializers.random_uniform}
@@ -137,11 +138,6 @@ class actor_critic_agent(agent):
         self.pg_scalar = pg_scalar
         self.value_scalar = value_scalar
         self.lr = learning_rate
-
-        # set our optimizer with given name and learning rate
-        op_dict = {"Adam": tf.train.AdamOptimizer(self.lr),
-                   "Gradient Descent": tf.train.GradientDescentOptimizer(self.lr)}
-        self.op = op_dict[optimizer]
         
         # create our summary writer
         self.writer = tf.summary.FileWriter(self.directory)
@@ -154,7 +150,7 @@ class actor_critic_agent(agent):
 
 
         # our input consists of our state
-        #   change to a one-hot format to make it easier for our network to recognize
+        #   change to a one-hot encoding format to make it easier for our network to recognize
         with tf.name_scope("network_inputs"):
             self.state = tf.placeholder(shape = [None,1],dtype = tf.int32)
             self.state_one_hot= tf.one_hot(self.state, obs_space)
@@ -162,12 +158,15 @@ class actor_critic_agent(agent):
         # keep track of our previous layer to feed to the next layer
         previous= self.state_one_hot
 
-        # create our hidden layers using the new_hidden_layer method
+        # create our hidden layers using the new_dense_layer master-class method
         for i in range(hidden_layers):
             with tf.name_scope("hidden"+str(i+1)):
                 new_hidden_layer = super().new_dense_layer(self.hidden_nodes,self.kernel_init,self.bias_init,previous)
                 previous = new_hidden_layer
 
+        # create our outputs:
+        #   consists of an estimation of the state-value (from the Bellman equations) that directly connects to the inputs
+        #   normal outputs represent the action we want to take
         with tf.name_scope("outputs"):
             self.state_value = super().new_dense_layer(1,self.kernel_init,self.bias_init,previous)
             self.outputs = super().new_dense_layer(self.action_space,self.kernel_init,self.bias_init,self.state_one_hot)
@@ -191,7 +190,6 @@ class actor_critic_agent(agent):
         #   value loss: want our network to accurately understand the value of a function
         #       - the state-value is like a weighted average of the state-action pair values for that state
         #       - advantage of an action would be the state-action value - the state value
-        
         with tf.name_scope("losses"):
             self.pg_loss = self.pg_scalar * tf.reduce_mean((self.q_value - self.state_value) *
                                 tf.nn.sparse_softmax_cross_entropy_with_logits(logits = self.outputs, labels = self.action_holder), name = "pg_loss")
@@ -204,6 +202,8 @@ class actor_critic_agent(agent):
         #   second optimizer for overall loss when we actually train
         #   gradients are only calculated through the variables they are dependent on
         with tf.name_scope("optimizer"):
+            self.op = tf.train.AdamOptimizer(self.lr)
+            
             self.value_variables = tf.trainable_variables()[:-2]
             self.value_grads = tf.gradients(self.value_loss,self.value_variables)
             self.value_grads_and_vars = list(zip(self.value_grads, self.value_variables))
@@ -251,8 +251,8 @@ class actor_critic_agent(agent):
     def create_summaries(self):
         """ 
         creates all the summaries for tensorboard that we desire
-        scalars are single values that can be plotted over time
-        histograms are for multiple values and seeing their distributions
+            scalars are single values that can be plotted over time
+            histograms are for multiple values and seeing their distributions
         """
         # keep track of our loss functions and average reward
         tf.summary.scalar("policy gradient loss", self.pg_loss)
@@ -270,17 +270,17 @@ class actor_critic_agent(agent):
         tf.summary.histogram("output weights", tf.trainable_variables()[-2])
         tf.summary.histogram("output bias", tf.trainable_variables()[-1])
         
-        # merge all summaries into one summary, we can just run this summary to record everything
+        # merge all summaries into one summary, we can just run this summary to record everything to tensorboard
         self.merge = tf.summary.merge_all()
 
 
-    def write_summaries(self, states, actions, rewards, average_rewards, i):
+    def write_summaries(self, state, action, reward, average_reward, i):
         """
         record the values that we created summaries out of, write them to tensorboard
         """
         # make sure the values to be fed to the placeholders are of the write shape
-        feed_dict = {self.state: states, self.action_holder: actions,
-                     self.reward_holder: rewards, self.average_rewards: average_rewards}
+        feed_dict = {self.state: state, self.action_holder: action,
+                     self.reward_holder: reward, self.average_rewards: average_reward}
         summary = agent.sess.run(self.merge, feed_dict = feed_dict)
         self.writer.add_summary(summary, i)
         self.writer.flush()
@@ -292,9 +292,6 @@ class actor_critic_agent(agent):
         """
         feed_dict = {self.state: states, self.reward_holder: rewards}
         agent.sess.run(self.value_update, feed_dict = feed_dict)
-
-
-
 
 
 
@@ -321,6 +318,9 @@ Also writes the average reward, weights, and biases to tensorboard
 
 Agent is initialized with adjustable hyper-parameters for the network
 
+Primarily modeled off of code from this link:
+    https://www.oreilly.com/ideas/reinforcement-learning-with-tensorflow 
+
 """
 
 
@@ -334,7 +334,6 @@ class policy_gradient_agent(agent):
                  bias_init = "zeros",           # the bias initailizer for each layer
                  normalize = True,             # whether or not to normalize the rewards before updating
                  learning_rate = 1e-2,          # learning rate for optimizer
-                 optimizer = "Adam",            # type of optimizer
                  directory = None):             # directory name for tensorboard
 
         """
@@ -343,7 +342,7 @@ class policy_gradient_agent(agent):
         
         super().__init__(directory = directory)
 
-        super().reset()
+        super().reset() # reset our tensorflow session
         
         kernel_init_dict = {"variance_scaling": tf.initializers.variance_scaling,
                             "random_normal": tf.initializers.random_normal,
@@ -363,14 +362,8 @@ class policy_gradient_agent(agent):
         self.normalize = normalize
         self.lr = learning_rate
 
-        # set our optimizer with given name and learning rate
-        op_dict = {"Adam": tf.train.AdamOptimizer(self.lr),
-                   "Gradient Descent": tf.train.GradientDescentOptimizer(self.lr)}
-        self.op = op_dict[optimizer]
-
         # create our summary writer
         self.writer = tf.summary.FileWriter(self.directory)
-
 
 
         # ------------start building our network-------------
@@ -413,8 +406,11 @@ class policy_gradient_agent(agent):
             self.cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits = self.outputs, labels = self.action_holder, name = "cross-entropy")
 
         # define our gradients and optimizers
-        #   
+        #   create placeholders for our gradients so that they can be manually fed in
+        #   want to compile a running list of gradients for everytime before we update
+        #   have the optimizer apply the gradients
         with tf.name_scope("optimizer"):
+            self.op = tf.train.AdamOptimizer(self.lr)
             self.grads = tf.gradients(self.cross_entropy, tf.trainable_variables())
             self.grad_placeholders = []
             for gradient in self.grads:
@@ -440,8 +436,6 @@ class policy_gradient_agent(agent):
         """
         returns an action given the state (first part of our network)
         action is determined based on the max value of our outputs
-
-        also gets the gradients based on the action taken
         """
         state = np.reshape(state,[1,1])
         self.chosen_action = tf.argmax(self.outputs)
@@ -452,7 +446,7 @@ class policy_gradient_agent(agent):
         return action
 
 
-    def update_batch(self, states, actions, rewards): # don't actually use the states and actions, there for OOP purposes
+    def update_batch(self, states, actions, rewards): # don't actually use the states and actions
         """ 
         updates our network by applying our gradients multiplied by the rewards
         feed in the mean gradients to update our network
@@ -461,6 +455,7 @@ class policy_gradient_agent(agent):
             rewards = self.normalize_rewards(rewards)
 
         # multiply gradients by normalized rewards
+        #   be careful of the shapes of the arrays
         shape = list(np.array(rewards).shape)
         shape.append(np.array(self.grad_list).shape[1])
         self.grad_list = np.reshape(self.grad_list, shape)
@@ -514,6 +509,7 @@ class policy_gradient_agent(agent):
     def update_gradients(self, state, action):
         """
         calculate our gradients and append them to ongoing list
+        list is reset when we feed in batches to update the network
         """
         state = np.reshape(state,[1,1])
         feed_dict = {self.state: state, self.action_holder: [action]}

@@ -38,7 +38,6 @@ bias_init_list = ["zeros", "ones", "variance_scaling"]
 pg_scalar_list = [0.5, 1, 2, 3] # will directly influence loss, look at avg reward instead
 value_scalar_list = [0.5, 1, 2, 3] # same ^
 learning_rate_list = [1e-4, 1e-3, 1e-2]
-optimizer_list = ["Adam", "GradientDescent"]
 
 
 
