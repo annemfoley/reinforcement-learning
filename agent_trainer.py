@@ -2,6 +2,9 @@ from agents import actor_critic_agent, policy_gradient_agent
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+
+
 def step(data, timestep, action, object_list, final_reward_subtraction):
     """
     this function is essentially our environment,
@@ -28,6 +31,9 @@ def step(data, timestep, action, object_list, final_reward_subtraction):
                 final_reward -= final_reward_subtraction # deduct a certain value for every object not ever chosen
 
     return object_list, reward, final_reward
+
+
+
 
 
 """

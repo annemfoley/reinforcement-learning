@@ -15,6 +15,7 @@ The max reward is achieved by accomplishing these two things
 
 # this is our reward matrix
 #   represents the value of choosing each object at a certain time
+# (normally we would generate the reward matrix, but here we just explicitly created it...)
 
             # Altair Vega Deneb
 data= np.array([[-3,  1, -3],
@@ -40,7 +41,7 @@ obs_space = len(data)
 action_space = len(data[0])
 
 # create an agent and train it
-my_agent = policy_gradient_agent(obs_space, action_space, learning_rate = 0.1)
+my_agent = actor_critic_agent(obs_space, action_space, learning_rate = 1e-2)
 train_agent(my_agent, data, 
             rewards_discount = 0.7, final_reward_subtraction = 5)
 
