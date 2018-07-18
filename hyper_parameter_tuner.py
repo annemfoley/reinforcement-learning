@@ -5,17 +5,31 @@ import datetime
 import pickle
 
 
-# get our data from a pickled file
+# get our data:
 
-infile= open("/Users/afoley/Documents/GitHub/DeepSkyPlanner/Astroplan/Data Files/summer_triangle_data","rb")
-data = pickle.load(infile)
+            # Altair Vega Deneb
+data= np.array([[-3,  1, -3],
+                [-3,  1, -3], # hour
+                [ 1,  2,  1], #  |
+                [ 1,  2,  1], #  |
+                [ 2,  3,  2], #  |
+                [ 2,  3,  2], #  v
+                [ 3,  3,  2],
+                [ 3,  3,  3],
+                [ 3,  3,  3],
+                [ 3,  2,  3],
+                [ 3,  2,  3],
+                [ 2,  1,  2],
+                [ 1,  1,  2],
+                [ 1,  1,  1],
+                [-3, -3,  1],
+                [-3, -3,  1]] )
 
-obs_space = len(data)
-action_space = len(data[0])
+# MAX TOTAL REWARD: 34
 
 
 
-# give some options for our network's hyper-parameters
+# give some options for our network's hyper-parameters:
 
 hidden_layers_list = [1,2]
 hidden_nodes_list = [10,15,20,25]
@@ -29,7 +43,7 @@ optimizer_list = ["Adam", "GradientDescent"]
 
 
 
-# give some options for our training hyper-parameters
+# give some options for our training hyper-parameters:
 
 pre_episodes_list = [0,20,50,100]
 batch_size_list = [10,20,50]
@@ -52,7 +66,7 @@ print("Use this directory:", master_directory)
 
 
 
-# test the hyper-parameter(s) we choose
+# test the hyper-parameter(s) we choose:
 
 for i, e in enumerate(e_list):
     print("\n\nRUN #"+str(i+1))
