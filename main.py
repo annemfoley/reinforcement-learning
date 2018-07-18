@@ -42,7 +42,7 @@ action_space = len(data[0])
 
 # create an agent and train it
 my_agent = actor_critic_agent(obs_space, action_space, learning_rate = 1e-2)
-train_agent(my_agent, data, 
+train_agent(my_agent, data,
             rewards_discount = 0.7, final_reward_subtraction = 5)
 
 print("\nDone training!")
@@ -53,19 +53,3 @@ directory = my_agent.get_directory()
 print("\nType 'tensorboard --logdir "+directory+"' into the terminal")
 print("Access on web browser through link: localhost:6006")
 
-
-
-
-# display our finalized schedule and the reward it would have received
-reward = 0
-my_objects = np.zeros(shape = [action_space], dtype = np.int32)
-object_names = ['Altari','Vega','Deneb']
-
-print("\nTelescope's finalized schedule:\n")
-for i in range(obs_space):
-    action = my_agent.get_action(i)
-    my_objects, r, fr = step(data, i, action, my_objects, 5)
-    reward += r+fr
-    print("\t"+object_names[action])
-
-print("\nWould have received a reward of:",reward)
