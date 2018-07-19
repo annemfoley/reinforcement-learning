@@ -40,12 +40,12 @@ class agent:
         tf.reset_default_graph()
         agent.sess = tf.Session()
 
-    def new_dense_layer(self, nodes, kernel_init, bias_init, inputs):
+    def new_dense_layer(self, nodes, activation, kernel_init, bias_init, inputs):
         """
         creates a new layer
         given the nodes, weight initializer, bias initializer, and previous (input) layer
         """
-        layer_nodes = tf.layers.Dense(nodes, activation = tf.nn.sigmoid, kernel_initializer = kernel_init, bias_initializer = bias_init)
+        layer_nodes = tf.layers.Dense(nodes, activation = activation, kernel_initializer = kernel_init, bias_initializer = bias_init)
         layer = layer_nodes.apply(inputs)
         return layer
 
@@ -106,6 +106,7 @@ class actor_critic_agent(agent):
                  one_hot = True,                # whether or not to encode the state
                  hidden_layers = 1,             # the number of hidden layers
                  hidden_nodes = [20],           # the nodes per hidden layer, if not enough indicies, will use last index
+                 activation = "sigmoid",        # the activation function for the nodes of the NN
                  kernel_init = "variance_scaling",# the weights initializer for each layer
                  bias_init = "zeros",           # the bias initailizer for each layer
                  pg_scalar = 1,                 # magnitude of policy gradient loss
@@ -121,6 +122,9 @@ class actor_critic_agent(agent):
 
         super().reset() # reset our tensorflow session
 
+        activation_dict = {"sigmoid": tf.nn.sigmoid,
+                                "relu": tf.nn.relu,
+                                "tanh": tf.nn.tanh}
         kernel_init_dict = {"variance_scaling": tf.initializers.variance_scaling,
                             "random_normal": tf.initializers.random_normal,
                             "random_uniform": tf.initializers.random_uniform}
@@ -134,6 +138,7 @@ class actor_critic_agent(agent):
         # set all our hyper-parameters
         self.hidden_layers = hidden_layers
         self.hidden_nodes = hidden_nodes
+        self.activation = activation_dict[activation]
         self.kernel_init = kernel_init_dict[kernel_init]
         self.bias_init = bias_init_dict[bias_init]
         self.pg_scalar = pg_scalar
@@ -163,15 +168,15 @@ class actor_critic_agent(agent):
         for i in range(hidden_layers):
             with tf.name_scope("hidden"+str(i+1)):
                 nodes = self.hidden_nodes[i] if i < len(self.hidden_nodes) else self.hidden_nodes[-1]
-                new_hidden_layer = super().new_dense_layer(nodes, self.kernel_init, self.bias_init, previous)
+                new_hidden_layer = super().new_dense_layer(nodes, self.activation, self.kernel_init, self.bias_init, previous)
                 previous = new_hidden_layer
 
         # create our outputs:
         #   consists of an estimation of the state-value (from the Bellman equations) that directly connects to the inputs
         #   normal outputs represent the action we want to take
         with tf.name_scope("outputs"):
-            self.state_value = super().new_dense_layer(1,self.kernel_init,self.bias_init,self.state_one_hot)
-            self.outputs = super().new_dense_layer(self.action_space,self.kernel_init,self.bias_init,previous)
+            self.state_value = super().new_dense_layer(1,self.activation,self.kernel_init,self.bias_init,previous)
+            self.outputs = super().new_dense_layer(self.action_space,self.activation,self.kernel_init,self.bias_init,previous)
             self.outputs = tf.squeeze(self.outputs)
 
         # -----------set up our network's training procedure------------
@@ -332,6 +337,7 @@ class policy_gradient_agent(agent):
                  one_hot = True,                # whether or not to encode the state
                  hidden_layers = 1,             # the number of hidden layers
                  hidden_nodes = [20],           # the nodes per hidden layer, if not enough indicies, will use last index
+                 activation = "sigmoid",        # the activation function for the nodes of the NN
                  kernel_init = "variance_scaling",# the weights initializer for each layer
                  bias_init = "zeros",           # the bias initailizer for each layer
                  normalize = True,             # whether or not to normalize the rewards before updating
@@ -344,7 +350,10 @@ class policy_gradient_agent(agent):
         super().__init__(directory = directory)
 
         super().reset() # reset our tensorflow session
-        
+
+        activation_dict = {"sigmoid": tf.nn.sigmoid,
+                                "relu": tf.nn.relu,
+                                "tanh": tf.nn.tanh}
         kernel_init_dict = {"variance_scaling": tf.initializers.variance_scaling,
                             "random_normal": tf.initializers.random_normal,
                             "random_uniform": tf.initializers.random_uniform}
@@ -358,6 +367,7 @@ class policy_gradient_agent(agent):
         # set all our hyper-parameters
         self.hidden_layers = hidden_layers
         self.hidden_nodes = hidden_nodes
+        self.activation = activation_dict[activation]
         self.kernel_init = kernel_init_dict[kernel_init]
         self.bias_init = bias_init_dict[bias_init]
         self.normalize = normalize
@@ -385,11 +395,11 @@ class policy_gradient_agent(agent):
         for i in range(hidden_layers):
             with tf.name_scope("hidden"+str(i+1)):
                 nodes = self.hidden_nodes[i] if i < len(self.hidden_nodes) else self.hidden_nodes[-1]
-                new_hidden_layer = super().new_dense_layer(nodes, self.kernel_init, self.bias_init, previous)
+                new_hidden_layer = super().new_dense_layer(nodes,self.activation, self.kernel_init, self.bias_init, previous)
                 previous = new_hidden_layer
 
         with tf.name_scope("outputs"):
-            self.outputs = super().new_dense_layer(self.action_space,self.kernel_init,self.bias_init,previous)
+            self.outputs = super().new_dense_layer(self.action_space,self.activation,self.kernel_init,self.bias_init,previous)
             self.outputs = tf.squeeze(self.outputs)
 
 

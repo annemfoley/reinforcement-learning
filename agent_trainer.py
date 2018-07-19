@@ -152,7 +152,7 @@ def train_agent(agent, data,
         for timestep in range(max_timesteps):
 
             # get our next action, with a chance of exploring
-            if np.random.random() < e:
+            if np.random.random() < e and display == True and episode % display_rate==0:
                 # choose a random action
                 action = np.random.randint(0,action_space)
                 e*=e_discount
