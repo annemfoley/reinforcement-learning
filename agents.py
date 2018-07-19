@@ -3,18 +3,16 @@ import tensorflow as tf
 import datetime
 
 
-"""
-Agent Super-Class:
-
-Provides a foundation for other agent classes
-    - primary purpose is to maximise the cumulative reward per episode
-    - utilizes neural networks to develop its policy
-
-Requires implementation of get_action(), update_batch(), create_summaries(), and write_summaries()
-"""
-
-
 class agent:
+    """
+    Agent Super-Class:
+
+    Provides a foundation for other agent classes
+        - primary purpose is to maximise the cumulative reward per episode
+        - utilizes neural networks to develop its policy
+
+    Requires implementation of get_action(), update_batch(), create_summaries(), and write_summaries()
+    """
 
 
     def __init__(self,directory=None):
@@ -30,8 +28,6 @@ class agent:
             self.directory = "/tmp/astroplan/"+date
         else:
             self.directory = directory
-        print("\nNew agent's personal directory: "+self.directory)
-
 
     def reset(self):
         """
@@ -75,38 +71,37 @@ class agent:
 
 
 
-"""
-Actor-Critic Agent
-
-Consists of a 2-part graph:
-    input to first part is the state
-    will generate an action (simply the output with the max value)
-
-    input to second part is the state and the action taken
-    will generate a perceieved value of the state-action pair, goal is to accurately predict values
-    
-Losses:
-    includes a policy-gradient loss that is used to calculate the gradient for the action
-    also includes a value loss that is the difference between the predicted value and the actual value (the discounted reward)
-
-Also writes the losses, average reward, weights, and biases to tensorboard
-
-Agent is initialized with adjustable hyper-parameters for the network
-
-Primarily based on code from this link:
-    https://colab.research.google.com/drive/1d_1WzH8DWLkdWO3UHv-k8RxWtd8JgXNy#scrollTo=1rJoZ0WvyZZ4 
-
-"""
-
 
 
 class actor_critic_agent(agent):
+    """
+    Actor-Critic Agent
+
+    Consists of a 2-part graph:
+        input to first part is the state
+        will generate an action (simply the output with the max value)
+
+        input to second part is the state and the action taken
+        will generate a perceieved value of the state-action pair, goal is to accurately predict values
+        
+    Losses:
+        includes a policy-gradient loss that is used to calculate the gradient for the action
+        also includes a value loss that is the difference between the predicted value and the actual value (the discounted reward)
+
+    Also writes the losses, average reward, weights, and biases to tensorboard
+
+    Agent is initialized with adjustable hyper-parameters for the network
+
+    Primarily based on code from this link:
+        https://colab.research.google.com/drive/1d_1WzH8DWLkdWO3UHv-k8RxWtd8JgXNy#scrollTo=1rJoZ0WvyZZ4 
+
+    """
 
     def __init__(self, obs_space, action_space,
                  one_hot = True,                # whether or not to encode the state
                  hidden_layers = 1,             # the number of hidden layers
                  hidden_nodes = [20],           # the nodes per hidden layer, if not enough indicies, will use last index
-                 activation = "sigmoid",        # the activation function for the nodes of the NN
+                 activation = "tanh",        # the activation function for the nodes of the NN
                  kernel_init = "variance_scaling",# the weights initializer for each layer
                  bias_init = "zeros",           # the bias initailizer for each layer
                  pg_scalar = 1,                 # magnitude of policy gradient loss
@@ -312,32 +307,31 @@ class actor_critic_agent(agent):
 
 
 
-"""
-Policy-Gradient Agent
-
-Graph takes in state (most likely timestep) and outputs the action as the max value
-
-Calculates gradients for taken action through cross entropy
-    Compiles all the gradients into a list before updating
-    Calculates the mean gradients multiplied by the reward for that instance
-
-Also writes the average reward, weights, and biases to tensorboard
-
-Agent is initialized with adjustable hyper-parameters for the network
-
-Primarily modeled off of code from this link:
-    https://www.oreilly.com/ideas/reinforcement-learning-with-tensorflow 
-
-"""
-
 
 class policy_gradient_agent(agent):
+    """
+    Policy-Gradient Agent
+
+    Graph takes in state (most likely timestep) and outputs the action as the max value
+
+    Calculates gradients for taken action through cross entropy
+        Compiles all the gradients into a list before updating
+        Calculates the mean gradients multiplied by the reward for that instance
+
+    Also writes the average reward, weights, and biases to tensorboard
+
+    Agent is initialized with adjustable hyper-parameters for the network
+
+    Primarily modeled off of code from this link:
+        https://www.oreilly.com/ideas/reinforcement-learning-with-tensorflow 
+
+    """
 
     def __init__(self, obs_space, action_space,
                  one_hot = True,                # whether or not to encode the state
                  hidden_layers = 1,             # the number of hidden layers
                  hidden_nodes = [20],           # the nodes per hidden layer, if not enough indicies, will use last index
-                 activation = "sigmoid",        # the activation function for the nodes of the NN
+                 activation = "tanh",        # the activation function for the nodes of the NN
                  kernel_init = "variance_scaling",# the weights initializer for each layer
                  bias_init = "zeros",           # the bias initailizer for each layer
                  normalize = True,             # whether or not to normalize the rewards before updating

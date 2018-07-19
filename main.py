@@ -1,5 +1,6 @@
 from agents import actor_critic_agent, policy_gradient_agent
-from agent_trainer import train_agent, step
+from agent_trainer import train_agent
+from environments import time_environment
 import numpy as np
 
 """
@@ -37,19 +38,21 @@ data= np.array([[-3,  1, -3],
 
 # MAX TOTAL REWARD: 34
 
-obs_space = len(data)
-action_space = len(data[0])
+
+# create our environment
+env = time_environment(data)
+obs_space = env.get_obs_space()
+action_space = env.get_action_space()
 
 # create an agent and train it
-my_agent = actor_critic_agent(obs_space, action_space, hidden_nodes = [15], learning_rate = 1e-2)
-train_agent(my_agent, data, e = 0.1,
-            rewards_discount = 0.7, final_reward_subtraction = 5)
+my_agent = actor_critic_agent(obs_space, action_space, learning_rate = 1e-2)
+print("Agent's direcotry: "+my_agent.get_directory())
+train_agent(my_agent, env, rewards_discount = 0.7)
 
 print("\nDone training!")
 
 
 # display how to access training graphs from tensorboard
-directory = my_agent.get_directory()
-print("\nType 'tensorboard --logdir "+directory+"' into the terminal")
+print("\nType 'tensorboard --logdir "+my_agent.get_directory()+"' into the terminal")
 print("Access on web browser through link: localhost:6006")
 

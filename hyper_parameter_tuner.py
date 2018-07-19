@@ -1,5 +1,6 @@
 from agents import actor_critic_agent, policy_gradient_agent
 from agent_trainer import train_agent
+from environments import time_environment
 import numpy as np
 import datetime
 import pickle
@@ -29,27 +30,27 @@ data= np.array([[-3,  1, -3],
 
 
 
-# give some options for our network's hyper-parameters:
+# give some options for our network's hyper-parameters
 
 hidden_layers_list = [1,2]
 hidden_nodes_list = [10,15,20,25]
+activation_list = ["sigmoid","relu","tanh"]
 kernel_init_list = ["variance_scaling", "random_normal", "random_uniform"]
 bias_init_list = ["zeros", "ones", "variance_scaling"]
 pg_scalar_list = [0.5, 1, 2, 3] # will directly influence loss, look at avg reward instead
 value_scalar_list = [0.5, 1, 2, 3] # same ^
 learning_rate_list = [1e-4, 1e-3, 1e-2]
+optimizer_list = ["Adam", "GradientDescent"]
 
 
 
-
-# give some options for our training hyper-parameters:
+# give some options for our training hyper-parameters
 
 pre_episodes_list = [0,20,50,100]
 batch_size_list = [10,20,50]
 e_list = [0, 0.1, 0.3]
 e_discount_list = [1, 0.99, 0.9]
-rewards_discount_list = [0.9, 0.99] # will influence loss and avg reward, look at if the actions are reasonable instead
-final_reward_subtraction_list = [1, 2, 3] # same ^
+rewards_discount_list = [0.9, 0.99] # will influence loss , look at average_reward instead
 
 
 
@@ -65,13 +66,26 @@ print("Use this directory:", master_directory)
 
 
 
-# test the hyper-parameter(s) we choose:
+# test the hyper-parameter(s) we choose
 
-for i, e in enumerate(e_list):
+env = time_environment(data)
+
+obs_space = env.get_obs_space()
+action_space = env.get_action_space()
+
+for i, activation in enumerate(activation_list):
     print("\n\nRUN #"+str(i+1))
-    print("Exploration Rate:",e)
-    new_agent = actor_critic_agent(obs_space, action_space, value_scalar = 0.5, directory = master_directory + "/"+ str(e))
-    train_agent(new_agent, data, e = e, final_reward_subtraction = 5)
+    print("Activation:",activation)
+    
+    directory = master_directory + "/"+ str(activation)
+    print("Agnet "+str(i+1)+"'s directory: "+directory)
+
+    new_agent = actor_critic_agent(obs_space, action_space, value_scalar = 0.5,
+        activation = activation, directory = directory)
+        
+    train_agent(new_agent, env, rewards_discount = 0.7)
+
+
 
 print("\nDone!")
 print("\nType 'tensorboard --logdir "+master_directory+"' into the terminal")
