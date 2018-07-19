@@ -22,15 +22,16 @@ class agent:
         only creating a directory
         subclasses construct their neural networks in __init__()
         """
-
         # create a directory, using the current time is an easy way to create a unique directory
         now = datetime.datetime.now()
         date = str(now.month)+"-"+str(now.day)+"-"+str(now.year)+"_"+str(now.hour)+"-"+str(now.minute)+"-"+str(now.second)
+
         if directory==None:
             self.directory = "/tmp/astroplan/"+date
         else:
             self.directory = directory
         print("\nNew agent's personal directory: "+self.directory)
+
 
     def reset(self):
         """
@@ -104,7 +105,7 @@ class actor_critic_agent(agent):
     def __init__(self, obs_space, action_space,
                  one_hot = True,                # whether or not to encode the state
                  hidden_layers = 1,             # the number of hidden layers
-                 hidden_nodes = 20,             # the nodes per hidden layer
+                 hidden_nodes = [20],           # the nodes per hidden layer, if not enough indicies, will use last index
                  kernel_init = "variance_scaling",# the weights initializer for each layer
                  bias_init = "zeros",           # the bias initailizer for each layer
                  pg_scalar = 1,                 # magnitude of policy gradient loss
@@ -113,7 +114,7 @@ class actor_critic_agent(agent):
                  directory = None):             # directory name for tensorboard
 
         """
-        creates an agent with a neural network and training procedure
+        creates an agent with a neural network and training procedure using the actor-critic method
         """
 
         super().__init__(directory = directory)
@@ -158,18 +159,19 @@ class actor_critic_agent(agent):
         # keep track of our previous layer to feed to the next layer
         previous= self.state_one_hot
 
-        # create our hidden layers using the new_dense_layer master-class method
+        # create our hidden layers using the new_hidden_layer method
         for i in range(hidden_layers):
             with tf.name_scope("hidden"+str(i+1)):
-                new_hidden_layer = super().new_dense_layer(self.hidden_nodes,self.kernel_init,self.bias_init,previous)
+                nodes = self.hidden_nodes[i] if i < len(self.hidden_nodes) else self.hidden_nodes[-1]
+                new_hidden_layer = super().new_dense_layer(nodes, self.kernel_init, self.bias_init, previous)
                 previous = new_hidden_layer
 
         # create our outputs:
         #   consists of an estimation of the state-value (from the Bellman equations) that directly connects to the inputs
         #   normal outputs represent the action we want to take
         with tf.name_scope("outputs"):
-            self.state_value = super().new_dense_layer(1,self.kernel_init,self.bias_init,previous)
-            self.outputs = super().new_dense_layer(self.action_space,self.kernel_init,self.bias_init,self.state_one_hot)
+            self.state_value = super().new_dense_layer(1,self.kernel_init,self.bias_init,self.state_one_hot)
+            self.outputs = super().new_dense_layer(self.action_space,self.kernel_init,self.bias_init,previous)
             self.outputs = tf.squeeze(self.outputs)
 
         # -----------set up our network's training procedure------------
@@ -329,15 +331,14 @@ class policy_gradient_agent(agent):
     def __init__(self, obs_space, action_space,
                  one_hot = True,                # whether or not to encode the state
                  hidden_layers = 1,             # the number of hidden layers
-                 hidden_nodes = 20,             # the nodes per hidden layer
+                 hidden_nodes = [20],           # the nodes per hidden layer, if not enough indicies, will use last index
                  kernel_init = "variance_scaling",# the weights initializer for each layer
                  bias_init = "zeros",           # the bias initailizer for each layer
                  normalize = True,             # whether or not to normalize the rewards before updating
                  learning_rate = 1e-2,          # learning rate for optimizer
                  directory = None):             # directory name for tensorboard
-
         """
-        creates an agent with a network and training procedure
+        creates an agent with a network and training procedure using policy-gradient method
         """
         
         super().__init__(directory = directory)
@@ -383,7 +384,8 @@ class policy_gradient_agent(agent):
         # create our hidden layers using the new_hidden_layer method
         for i in range(hidden_layers):
             with tf.name_scope("hidden"+str(i+1)):
-                new_hidden_layer = super().new_dense_layer(self.hidden_nodes,self.kernel_init,self.bias_init,previous)
+                nodes = self.hidden_nodes[i] if i < len(self.hidden_nodes) else self.hidden_nodes[-1]
+                new_hidden_layer = super().new_dense_layer(nodes, self.kernel_init, self.bias_init, previous)
                 previous = new_hidden_layer
 
         with tf.name_scope("outputs"):

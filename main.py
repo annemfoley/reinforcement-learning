@@ -41,8 +41,8 @@ obs_space = len(data)
 action_space = len(data[0])
 
 # create an agent and train it
-my_agent = actor_critic_agent(obs_space, action_space, learning_rate = 1e-2)
-train_agent(my_agent, data,
+my_agent = actor_critic_agent(obs_space, action_space, hidden_nodes = [15], learning_rate = 1e-2)
+train_agent(my_agent, data, e = 0.1,
             rewards_discount = 0.7, final_reward_subtraction = 5)
 
 print("\nDone training!")
